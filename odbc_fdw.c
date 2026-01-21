@@ -1547,6 +1547,9 @@ static void odbcGetForeignPaths(PlannerInfo *root, RelOptInfo *baserel, Oid fore
 	                 NIL, /* no pathkeys */
 	                 baserel->lateral_relids,
 	                 NULL, /* no extra plan */
+#if PG_VERSION_NUM >= 170000
+	                 NIL, /* no fdw_restrictinfo */
+#endif
 	                 NIL /* no fdw_private list */));
 
 	elog_debug("----> finishing %s", __func__);
@@ -4397,7 +4400,18 @@ odbc_add_foreign_grouping_paths(PlannerInfo *root, RelOptInfo *input_rel,
 	rows = width = startup_cost = total_cost = 1;
 
 	/* Create and add foreign path to the grouping relation. */
-#if (PG_VERSION_NUM >= 120000)
+#if (PG_VERSION_NUM >= 170000)
+	grouppath = create_foreign_upper_path(root,
+										  grouped_rel,
+										  grouped_rel->reltarget,
+										  rows,
+										  startup_cost,
+										  total_cost,
+										  NIL,	/* no pathkeys */
+										  NULL,
+										  NIL,	/* no fdw_restrictinfo */
+										  NIL); /* no fdw_private */
+#elif (PG_VERSION_NUM >= 120000)
 	grouppath = create_foreign_upper_path(root,
 										  grouped_rel,
 										  grouped_rel->reltarget,

@@ -1411,6 +1411,10 @@ odbcIsValidOption(const char *option, Oid context)
 
 	elog_debug("%s", __func__);
 
+	/* Accept any option prefixed with odbc_ as ODBC connection attribute */
+	if (is_odbc_attribute(option))
+		return true;
+
 	/* Check if the options presents in the valid option list */
 	for (opt = valid_options; opt->optname; opt++)
 	{

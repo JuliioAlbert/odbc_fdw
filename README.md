@@ -1,5 +1,5 @@
-ODBC FDW for PostgreSQL 9.5+ 
-============================
+ODBC FDW for PostgreSQL 9.5+ (including PostgreSQL 17)
+======================================================
 This PostgreSQL extension implements a Foreign Data Wrapper (FDW) for
 remote databases using Open Database Connectivity [ODBC](http://msdn.microsoft.com/en-us/library/ms714562(v=VS.85).aspx).
 
@@ -11,7 +11,12 @@ Requirements
 To compile and install this extension, assuming a Linux OS,
 the libraries and header files for ODBC and PostgreSQL are needed,
 e.g. in Ubuntu this can be provided by the `unixodbc-dev`
-and `postgresql-server-dev-9.5` system packages.
+and `postgresql-server-dev-XX` system packages (where XX is your PostgreSQL version).
+
+For PostgreSQL 17 on Ubuntu:
+```sh
+sudo apt-get install unixodbc-dev postgresql-server-dev-17
+```
 
 To make use of the extension ODBC drivers for the data sources to
 be used must be installed in the system and reflected
@@ -31,8 +36,151 @@ Building and Installing
 The extension can be built and installed with:
 
 ```sh
-make
-sudo make install
+make USE_PGXS=1
+sudo make USE_PGXS=1 install
+```
+
+For a clean rebuild:
+```sh
+make clean && make USE_PGXS=1 && sudo make USE_PGXS=1 install
+```
+
+PostgreSQL 17 Installation
+--------------------------
+
+This version includes patches for PostgreSQL 17 compatibility. The following changes were made:
+
+1. Added `fdw_restrictinfo` parameter to `create_foreignscan_path()` and `create_foreign_upper_path()` functions (required for PG17)
+2. Added support for `odbc_dsn` and any `odbc_` prefixed options for ODBC connection attributes
+
+### Step-by-step Installation for PostgreSQL 17
+
+1. **Install dependencies:**
+```sh
+sudo apt-get update
+sudo apt-get install unixodbc-dev postgresql-server-dev-17 build-essential
+```
+
+2. **Clone and build:**
+```sh
+git clone https://github.com/your-repo/odbc_fdw.git
+cd odbc_fdw
+make clean && make USE_PGXS=1
+sudo make USE_PGXS=1 install
+```
+
+3. **Restart PostgreSQL:**
+```sh
+sudo systemctl restart postgresql
+```
+
+4. **Enable the extension in your database:**
+```sql
+CREATE EXTENSION odbc_fdw;
+```
+
+### Configuration for IBM Informix ODBC Driver
+
+If using IBM Informix, you need to configure environment variables for PostgreSQL:
+
+1. **Edit PostgreSQL environment file:**
+```sh
+sudo nano /etc/postgresql/17/main/environment
+```
+
+2. **Add the following lines (adjust paths as needed):**
+```
+INFORMIXDIR='/opt/IBM/Informix.4.50.FC12W1'
+LD_LIBRARY_PATH='/opt/IBM/Informix.4.50.FC12W1/lib:/opt/IBM/Informix.4.50.FC12W1/lib/esql:/opt/IBM/Informix.4.50.FC12W1/lib/cli'
+```
+
+3. **Restart PostgreSQL:**
+```sh
+sudo systemctl restart postgresql
+```
+
+### Example: Connecting to IBM Informix
+
+1. **Configure ODBC driver** (`/etc/odbcinst.ini`):
+```ini
+[Informix]
+Description=IBM Informix ODBC Driver
+Driver=/opt/IBM/Informix.4.50.FC12W1/lib/cli/iclit09b.so
+Setup=/opt/IBM/Informix.4.50.FC12W1/lib/cli/iclit09b.so
+FileUsage=1
+```
+
+2. **Configure DSN** (`/etc/odbc.ini`):
+```ini
+[MyInformixDSN]
+Driver          = Informix
+Description     = My Informix Database
+Database        = mydb
+Host            = 192.168.1.100
+Server          = myserver
+Service         = 1525
+Protocol        = onsoctcp
+```
+
+3. **Test ODBC connection:**
+```sh
+isql -v MyInformixDSN myuser mypassword
+```
+
+4. **Create foreign server using DSN:**
+```sql
+CREATE SERVER informix_server
+    FOREIGN DATA WRAPPER odbc_fdw
+    OPTIONS (
+        odbc_dsn 'MyInformixDSN'
+    );
+
+CREATE USER MAPPING FOR postgres
+    SERVER informix_server
+    OPTIONS (
+        odbc_uid 'myuser',
+        odbc_pwd 'mypassword'
+    );
+```
+
+5. **Or create foreign server with individual parameters:**
+```sql
+CREATE SERVER informix_server
+    FOREIGN DATA WRAPPER odbc_fdw
+    OPTIONS (
+        encoding 'LATIN1',
+        odbc_driver 'Informix',
+        odbc_DATABASE 'mydb',
+        odbc_HOST '192.168.1.100',
+        odbc_SERVER 'myserver',
+        odbc_SERVICE '1525',
+        odbc_PROTOCOL 'onsoctcp',
+        odbc_CLIENT_LOCALE 'en_US.CP1252',
+        odbc_DB_LOCALE 'en_US.CP1252'
+    );
+
+CREATE USER MAPPING FOR postgres
+    SERVER informix_server
+    OPTIONS (
+        odbc_uid 'myuser',
+        odbc_pwd 'mypassword'
+    );
+```
+
+6. **Create foreign table:**
+```sql
+CREATE FOREIGN TABLE my_foreign_table (
+    id integer OPTIONS (key 'true'),
+    name varchar(100),
+    value numeric(16,2)
+)
+SERVER informix_server
+OPTIONS (schema 'myschema', table 'mytable');
+```
+
+7. **Query the foreign table:**
+```sql
+SELECT * FROM my_foreign_table LIMIT 10;
 ```
 
 Feature

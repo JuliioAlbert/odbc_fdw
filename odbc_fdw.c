@@ -247,6 +247,7 @@ struct odbcFdwOption
 static struct odbcFdwOption valid_options[] =
 {
 	/* Foreign server options */
+	{ "odbc_dsn",        ForeignServerRelationId },
 	{ "odbc_driver",     ForeignServerRelationId },
 	{ "odbc_server",     ForeignServerRelationId },
 	{ "odbc_port",     ForeignServerRelationId },

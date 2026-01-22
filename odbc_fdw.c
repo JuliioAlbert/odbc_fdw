@@ -3447,7 +3447,7 @@ bind_stmt_params(odbcFdwModifyState *fmstate,
 
 				cbValue = palloc0(sizeof(SQLLEN));
 				*cbValue = SQL_NULL_DATA;
-				ret = SQLBindParameter(fmstate->stmt, pindex+1, SQL_PARAM_INPUT, SQL_C_DEFAULT, SQL_TYPE_NULL, 0, 0, NULL, 0, cbValue);
+				ret = SQLBindParameter(fmstate->stmt, pindex+1, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR, 0, 0, NULL, 0, cbValue);
 				check_return(ret, "BIND NULL", NULL, SQL_INVALID_HANDLE);
 			}
 			else
